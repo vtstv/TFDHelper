@@ -12,6 +12,7 @@ global GAME_EXE := "M1-Win64-Shipping.exe"
 global modules := Map()
 global tooltipTimer := 0
 global savedModuleStates := Map()  ; Store module states when master is disabled
+global DISABLE_BUNNY_JUMP_ON_REPEAT := true  ; When true, auto repeat disables bunny jumping
 
 ; ========== MODULE DEFINITIONS ==========
 ; Initialize all modules as disabled
@@ -20,12 +21,12 @@ InitializeModules()
 ; ========== HOTKEY MAPPINGS ==========
 Numpad0::ToggleModule("master")      ; Master ON/OFF toggle (disables/enables all)
 Numpad1::ToggleModule("tabber")      ; Auto tab presser (every 2 seconds)
-Numpad2::ToggleModule("bunny")       ; Movement + jumping + Auto V (R to toggle jumping, V to toggle Auto V, E to toggle movement)
-Numpad3::ToggleModule("luna")        ; Triple skill combo (E to spam Z,V,C when Bunny not active)
+Numpad2::ToggleModule("bunny")       ; Movement + jumping + Auto V + Auto C (R to toggle jumping, V to toggle Auto V, F4 to toggle movement, F5 to toggle Auto C)
+Numpad3::ToggleModule("luna")        ; Triple skill combo (E to spam Z,V,C)
 Numpad4::ToggleModule("viessa")      ; Auto-click after skill  (4 key or Z key)
 Numpad5::ToggleModule("freyna")      ; Auto C/V presser (F3 to toggle, manual C/V pauses)
 Numpad6::ToggleModule("quest")       ; Quest abort sequence (T key: ESC -> Click -> Space -> F2 hold -> R hold)
-Numpad7::ToggleModule("repeat")      ; F2+R sequence (T key: for repeatable quests)
+Numpad7::ToggleModule("repeat")      ; F2+R sequence (T key: for repeatable quests - optionally disables bunny jumping)
 Numpad8::ShowStatus()                ; Show all module status (including master and character classes)
 
 
@@ -131,6 +132,14 @@ F3:: {
     
     ; Handle Repeat sequence
     if (modules["repeat"].enabled) {
+        ; Optional: Disable bunny jumping when repeat is triggered
+        if (DISABLE_BUNNY_JUMP_ON_REPEAT && modules["bunny"].enabled && modules["bunny"].jumping) {
+            modules["bunny"].jumping := false
+            SetTimer(DoubleJump, 0)
+            ShowTooltip("Bunny: Jumping disabled by repeat sequence")
+            Sleep(1000)  ; Brief pause to show the tooltip
+        }
+        
         ; F2 hold -> wait -> R hold
         Send("{F2 down}")
         Sleep(1500)
@@ -158,27 +167,12 @@ F3:: {
     }
 }
 
-; Luna combo (Numpad3) and Bunny movement (Numpad2)
+; Luna combo (Numpad3)
 ~e:: {
     if (!modules["master"].enabled)
         return
     
-    ; Handle Bunny movement first (higher priority)
-    if (modules["bunny"].enabled) {
-        modules["bunny"].running := !modules["bunny"].running
-        if (modules["bunny"].running) {
-            SetTimer(BunnyMovement, 50)
-            SetTimer(BunnyMovementV, 2000)
-            ShowTooltip("Bunny: Movement ON")
-        } else {
-            SetTimer(BunnyMovement, 0)
-            SetTimer(BunnyMovementV, 0)
-            ShowTooltip("Bunny: Movement OFF")
-        }
-        return
-    }
-    
-    ; Handle Luna combo if Bunny is not enabled
+    ; Handle Luna combo
     if (modules["luna"].enabled && IsGameActive()) {
         ; Press Z, V, C twice each with 50ms delay
         Send("{z}")
@@ -191,6 +185,38 @@ F3:: {
         Sleep(50)
         Send("{c}")
         return
+    }
+}
+
+; Bunny movement (Numpad2)
+F4:: {
+    if (!modules["master"].enabled || !modules["bunny"].enabled)
+        return
+    
+    modules["bunny"].running := !modules["bunny"].running
+    if (modules["bunny"].running) {
+        SetTimer(BunnyMovement, 50)
+        SetTimer(BunnyMovementV, 2000)
+        ShowTooltip("Bunny: Movement ON")
+    } else {
+        SetTimer(BunnyMovement, 0)
+        SetTimer(BunnyMovementV, 0)
+        ShowTooltip("Bunny: Movement OFF")
+    }
+}
+
+; Bunny auto C (Numpad2)
+F5:: {
+    if (!modules["master"].enabled || !modules["bunny"].enabled)
+        return
+    
+    modules["bunny"].autoC := !modules["bunny"].autoC
+    if (modules["bunny"].autoC) {
+        SetTimer(BunnyAutoC, 60000)  ; 60 second (1 minute) cooldown
+        ShowTooltip("Bunny Auto C: ON")
+    } else {
+        SetTimer(BunnyAutoC, 0)
+        ShowTooltip("Bunny Auto C: OFF")
     }
 }
 
@@ -214,7 +240,7 @@ F3:: {
 InitializeModules() {
     modules["freyna"] := {enabled: false, active: false, paused: false}
     modules["quest"] := {enabled: false}
-    modules["bunny"] := {enabled: false, running: false, jumping: false, autoV: false, keyIndex: 1}
+    modules["bunny"] := {enabled: false, running: false, jumping: false, autoV: false, autoC: false, keyIndex: 1}
     modules["luna"] := {enabled: false}
     modules["tabber"] := {enabled: false, active: false}
     modules["viessa"] := {enabled: false, blocking: false}
@@ -287,6 +313,7 @@ DisableAllModules() {
     SetTimer(BunnyMovement, 0)
     SetTimer(BunnyMovementV, 0)
     SetTimer(BunnyAutoV, 0)
+    SetTimer(BunnyAutoC, 0)
     SetTimer(DoubleJump, 0)
     SetTimer(TabberFunction, 0)
     
@@ -296,6 +323,7 @@ DisableAllModules() {
     modules["bunny"].running := false
     modules["bunny"].jumping := false
     modules["bunny"].autoV := false
+    modules["bunny"].autoC := false
     modules["tabber"].active := false
     modules["viessa"].blocking := false
 }
@@ -313,9 +341,11 @@ DisableCharacterModule(moduleName) {
             SetTimer(DoubleJump, 0)
             SetTimer(BunnyMovementV, 0)  ; Stop movement V timer
             SetTimer(BunnyAutoV, 0)      ; Stop Auto V timer
+            SetTimer(BunnyAutoC, 0)      ; Stop Auto C timer
             modules["bunny"].running := false
             modules["bunny"].jumping := false
             modules["bunny"].autoV := false
+            modules["bunny"].autoC := false
         case "tabber":
             SetTimer(TabberFunction, 0)
             modules["tabber"].active := false
@@ -357,6 +387,7 @@ SaveModuleStates() {
                 savedState["running"] := moduleData.running
                 savedState["jumping"] := moduleData.jumping
                 savedState["autoV"] := moduleData.autoV
+                savedState["autoC"] := moduleData.autoC
                 savedState["keyIndex"] := moduleData.keyIndex
             case "luna":
                 savedState["enabled"] := moduleData.enabled
@@ -393,6 +424,7 @@ RestoreModuleStates() {
                 modules["bunny"].running := savedState["running"]
                 modules["bunny"].jumping := savedState["jumping"]
                 modules["bunny"].autoV := savedState["autoV"]
+                modules["bunny"].autoC := savedState["autoC"]
                 modules["bunny"].keyIndex := savedState["keyIndex"]
             case "luna":
                 modules["luna"].enabled := savedState["enabled"]
@@ -424,6 +456,9 @@ RestoreModuleStates() {
                     }
                     if (modules["bunny"].autoV) {
                         SetTimer(BunnyAutoV, 3000)  ; 3 second cooldown
+                    }
+                    if (modules["bunny"].autoC) {
+                        SetTimer(BunnyAutoC, 60000)  ; 60 second (1 minute) cooldown
                     }
                 case "tabber":
                     if (modules["tabber"].active) {
@@ -491,6 +526,12 @@ BunnyMovementV() {
     if (!modules["master"].enabled || !IsGameActive())
         return
     Send("{v}")
+}
+
+BunnyAutoC() {
+    if (!modules["master"].enabled || !IsGameActive())
+        return
+    Send("{c}")
 }
 
 ShowTooltip(text) {
