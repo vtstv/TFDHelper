@@ -14,6 +14,30 @@ global tooltipTimer := 0
 global savedModuleStates := Map()  ; Store module states when master is disabled
 global DISABLE_BUNNY_JUMP_ON_REPEAT := true  ; When true, auto repeat disables bunny jumping
 
+; ========== TIMER CONFIGURATION ==========
+; Freyna timers (milliseconds)
+global FREYNA_C_COOLDOWN := 11000        ; Auto C press every 11 seconds
+global FREYNA_V_COOLDOWN := 8000         ; Auto V press every 8 seconds
+
+; Bunny timers (milliseconds)
+global BUNNY_MOVEMENT_INTERVAL := 50     ; Movement key switching speed
+global BUNNY_MOVEMENT_V_INTERVAL := 2000 ; Movement V press every 2 seconds
+global BUNNY_AUTO_V_COOLDOWN := 3000     ; Auto V cooldown (3 seconds)
+global BUNNY_AUTO_C_COOLDOWN := 60000    ; Auto C cooldown (60 seconds/1 minute)
+global BUNNY_JUMP_INTERVAL := 100        ; Double jump speed
+
+; Tabber timer (milliseconds)
+global TABBER_INTERVAL := 2000           ; Tab press every 2 seconds
+
+; Ascend timers (milliseconds)
+global ASCEND_R_DELAY := 2000            ; Delay after manual R press before jump
+global ASCEND_AUTO_R_ENABLED := true     ; Enable auto R press on left click
+global ASCEND_AUTO_R_DELAY := 2500       ; Delay before pressing R after left click (2.5 seconds)
+global ASCEND_AUTO_JUMP_DELAY := 2000    ; Delay after auto R before jump (2 seconds)
+
+; Tooltip timer (milliseconds)
+global TOOLTIP_DURATION := 1500          ; How long tooltips stay visible
+
 ; ========== MODULE DEFINITIONS ==========
 ; Initialize all modules as disabled
 InitializeModules()
@@ -28,6 +52,63 @@ Numpad5::ToggleModule("freyna")      ; Auto C/V presser (F3 to toggle, manual C/
 Numpad6::ToggleModule("quest")       ; Quest abort sequence (T key: ESC -> Click -> Space -> F2 hold -> R hold)
 Numpad7::ToggleModule("repeat")      ; F2+R sequence (T key: for repeatable quests - optionally disables bunny jumping)
 Numpad8::ShowStatus()                ; Show all module status (including master and character classes)
+; F6: Toggle ascend module, Left Click: Auto R+Jump sequence (ignores clicks during sequence)
+
+; ========== ASCEND LEFT CLICK ACTIVATION ==========
+~LButton:: {
+    if (!ASCEND_AUTO_R_ENABLED || !modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive())
+        return
+    
+    ; Ignore clicks if sequence is already running
+    if (modules["ascend"].autoRTimer != 0 || modules["ascend"].autoJumpTimer != 0) {
+        return  ; Sequence already in progress, ignore this click
+    }
+    
+    ; Start the auto R sequence - left click executes once and ignores further clicks
+    modules["ascend"].autoRTimer := SetTimer(() => AutoRSequence(), -ASCEND_AUTO_R_DELAY)
+}
+
+AutoRSequence() {
+    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive())
+        return
+    
+    ; Clear the R timer since we're executing now
+    modules["ascend"].autoRTimer := 0
+    
+    ; Press R (after 2.5s delay from left click)
+    Send("{r}")
+    ShowTooltip("Ascend: R pressed")
+    
+    ; Schedule the jump after 2s delay from R press (one-time execution)
+    modules["ascend"].autoJumpTimer := SetTimer(() => AscendJumpAndFinish(), -ASCEND_AUTO_JUMP_DELAY)
+}
+
+AscendJumpAndFinish() {
+    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive())
+        return
+    
+    ; Clear the jump timer since we're executing now
+    modules["ascend"].autoJumpTimer := 0
+    
+    ; Execute the jump
+    Send("{Space down}")
+    Sleep(100)
+    Send("{Space up}")
+}
+
+StopAllAscendTimers() {
+    ; Stop all ascend-related timers
+    if (modules["ascend"].autoRTimer) {
+        SetTimer(modules["ascend"].autoRTimer, 0)
+        modules["ascend"].autoRTimer := 0
+    }
+    if (modules["ascend"].autoJumpTimer) {
+        SetTimer(modules["ascend"].autoJumpTimer, 0)
+        modules["ascend"].autoJumpTimer := 0
+    }
+    ; Stop any orphaned AscendJump timers (for manual R press)
+    SetTimer(AscendJump, 0)
+}
 
 
 ; ========== MAIN HOTKEYS ==========
@@ -39,8 +120,8 @@ F3:: {
     modules["freyna"].active := !modules["freyna"].active
     if (modules["freyna"].active) {
         if (!modules["freyna"].paused) {
-            SetTimer(() => PressKey("c"), 11000)
-            SetTimer(() => PressKey("v"), 8000)
+            SetTimer(() => PressKey("c"), FREYNA_C_COOLDOWN)
+            SetTimer(() => PressKey("v"), FREYNA_V_COOLDOWN)
         }
         ShowTooltip("Freyna: ON")
     } else {
@@ -61,8 +142,8 @@ F3:: {
         SetTimer(() => PressKey("v"), 0)
         ShowTooltip("Freyna: PAUSED")
     } else {
-        SetTimer(() => PressKey("c"), 11000)
-        SetTimer(() => PressKey("v"), 8000)
+        SetTimer(() => PressKey("c"), FREYNA_C_COOLDOWN)
+        SetTimer(() => PressKey("v"), FREYNA_V_COOLDOWN)
         ShowTooltip("Freyna: RESUMED")
     }
 }
@@ -80,8 +161,8 @@ F3:: {
             SetTimer(() => PressKey("v"), 0)
             ShowTooltip("Freyna: PAUSED")
         } else {
-            SetTimer(() => PressKey("c"), 11000)
-            SetTimer(() => PressKey("v"), 8000)
+            SetTimer(() => PressKey("c"), FREYNA_C_COOLDOWN)
+            SetTimer(() => PressKey("v"), FREYNA_V_COOLDOWN)
             ShowTooltip("Freyna: RESUMED")
         }
         return
@@ -91,7 +172,7 @@ F3:: {
     if (modules["bunny"].enabled) {
         modules["bunny"].autoV := !modules["bunny"].autoV
         if (modules["bunny"].autoV) {
-            SetTimer(BunnyAutoV, 3000)  ; 3 second cooldown
+            SetTimer(BunnyAutoV, BUNNY_AUTO_V_COOLDOWN)
             ShowTooltip("Bunny Auto V: ON")
         } else {
             SetTimer(BunnyAutoV, 0)
@@ -161,7 +242,7 @@ F3:: {
     if (modules["bunny"].enabled) {
         modules["bunny"].jumping := !modules["bunny"].jumping
         if (modules["bunny"].jumping) {
-            SetTimer(DoubleJump, 100)
+            SetTimer(DoubleJump, BUNNY_JUMP_INTERVAL)
             ShowTooltip("Bunny: Jumping ON")
         } else {
             SetTimer(DoubleJump, 0)
@@ -169,10 +250,10 @@ F3:: {
         }
     }
     
-    ; Handle Ascending set ammo reload
-    if (modules["ascend"].enabled && IsGameActive()) {
-        ; Delay then single jump
-        SetTimer(AscendJump, -2000)  ; -2000 means run once after 2 seconds
+    ; Handle Ascending set ammo reload (manual R press)
+    if (modules["master"].enabled && modules["ascend"].enabled && IsGameActive()) {
+        ; Only trigger if ascend module is actually enabled and master is on
+        SetTimer(AscendJump, -ASCEND_R_DELAY)
     }
 }
 
@@ -204,8 +285,8 @@ F4:: {
     
     modules["bunny"].running := !modules["bunny"].running
     if (modules["bunny"].running) {
-        SetTimer(BunnyMovement, 50)
-        SetTimer(BunnyMovementV, 2000)
+        SetTimer(BunnyMovement, BUNNY_MOVEMENT_INTERVAL)
+        SetTimer(BunnyMovementV, BUNNY_MOVEMENT_V_INTERVAL)
         ShowTooltip("Bunny: Movement ON")
     } else {
         SetTimer(BunnyMovement, 0)
@@ -221,7 +302,7 @@ F5:: {
     
     modules["bunny"].autoC := !modules["bunny"].autoC
     if (modules["bunny"].autoC) {
-        SetTimer(BunnyAutoC, 60000)  ; 60 second (1 minute) cooldown
+        SetTimer(BunnyAutoC, BUNNY_AUTO_C_COOLDOWN)
         ShowTooltip("Bunny Auto C: ON")
     } else {
         SetTimer(BunnyAutoC, 0)
@@ -230,7 +311,7 @@ F5:: {
 }
 
 ; Ascending set ammo reload
-F6::ToggleModule("ascend")           ; Toggle ascend module (auto space after R press with 2s delay)
+F6::ToggleModule("ascend")           ; Toggle ascend module
 
 ; Viessa auto-click (Numpad6)
 ~4::
@@ -257,7 +338,7 @@ InitializeModules() {
     modules["tabber"] := {enabled: false, active: false}
     modules["viessa"] := {enabled: false, blocking: false}
     modules["repeat"] := {enabled: false}
-    modules["ascend"] := {enabled: false}
+    modules["ascend"] := {enabled: false, autoRTimer: 0, autoJumpTimer: 0}
     modules["master"] := {enabled: true}
     
     ; Start tabber timer if enabled
@@ -311,7 +392,7 @@ ToggleModule(moduleName) {
     } else {
         ; Auto-start tabber when enabled
         if (moduleName == "tabber") {
-            SetTimer(TabberFunction, 2000)
+            SetTimer(TabberFunction, TABBER_INTERVAL)
             modules["tabber"].active := true
         }
     }
@@ -329,6 +410,9 @@ DisableAllModules() {
     SetTimer(BunnyAutoC, 0)
     SetTimer(DoubleJump, 0)
     SetTimer(TabberFunction, 0)
+    
+    ; Stop all ascend timers using dedicated cleanup function
+    StopAllAscendTimers()
     
     ; Reset all module states
     modules["freyna"].active := false
@@ -366,6 +450,9 @@ DisableCharacterModule(moduleName) {
             modules["viessa"].blocking := false
         case "luna":
             ; Luna doesn't have persistent timers, just reset any states if needed
+        case "ascend":
+            ; Stop all ascend timers using dedicated cleanup function
+            StopAllAscendTimers()
     }
 }
 
@@ -414,6 +501,8 @@ SaveModuleStates() {
                 savedState["enabled"] := moduleData.enabled
             case "ascend":
                 savedState["enabled"] := moduleData.enabled
+                savedState["autoRTimer"] := 0          ; Don't save timer references
+                savedState["autoJumpTimer"] := 0       ; Don't save timer references
         }
         
         savedModuleStates[moduleName] := savedState
@@ -453,6 +542,8 @@ RestoreModuleStates() {
                 modules["repeat"].enabled := savedState["enabled"]
             case "ascend":
                 modules["ascend"].enabled := savedState["enabled"]
+                modules["ascend"].autoRTimer := 0        ; Reset timers
+                modules["ascend"].autoJumpTimer := 0     ; Reset timers
         }
         
         ; Restart timers for active modules
@@ -460,26 +551,26 @@ RestoreModuleStates() {
             switch moduleName {
                 case "freyna":
                     if (modules["freyna"].active && !modules["freyna"].paused) {
-                        SetTimer(() => PressKey("c"), 11000)
-                        SetTimer(() => PressKey("v"), 8000)
+                        SetTimer(() => PressKey("c"), FREYNA_C_COOLDOWN)
+                        SetTimer(() => PressKey("v"), FREYNA_V_COOLDOWN)
                     }
                 case "bunny":
                     if (modules["bunny"].running) {
-                        SetTimer(BunnyMovement, 50)
-                        SetTimer(BunnyMovementV, 2000)
+                        SetTimer(BunnyMovement, BUNNY_MOVEMENT_INTERVAL)
+                        SetTimer(BunnyMovementV, BUNNY_MOVEMENT_V_INTERVAL)
                     }
                     if (modules["bunny"].jumping) {
-                        SetTimer(DoubleJump, 100)
+                        SetTimer(DoubleJump, BUNNY_JUMP_INTERVAL)
                     }
                     if (modules["bunny"].autoV) {
-                        SetTimer(BunnyAutoV, 3000)  ; 3 second cooldown
+                        SetTimer(BunnyAutoV, BUNNY_AUTO_V_COOLDOWN)
                     }
                     if (modules["bunny"].autoC) {
-                        SetTimer(BunnyAutoC, 60000)  ; 60 second (1 minute) cooldown
+                        SetTimer(BunnyAutoC, BUNNY_AUTO_C_COOLDOWN)
                     }
                 case "tabber":
                     if (modules["tabber"].active) {
-                        SetTimer(TabberFunction, 2000)
+                        SetTimer(TabberFunction, TABBER_INTERVAL)
                     }
             }
         }
@@ -552,7 +643,7 @@ BunnyAutoC() {
 }
 
 AscendJump() {
-    if (!modules["master"].enabled || !IsGameActive())
+    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive())
         return
     
     Send("{Space down}")
@@ -570,7 +661,7 @@ ShowTooltip(text) {
     if (tooltipTimer)
         SetTimer(tooltipTimer, 0)
     tooltipTimer := () => ToolTip()
-    SetTimer(tooltipTimer, -1500)
+    SetTimer(tooltipTimer, -TOOLTIP_DURATION)
 }
 
 ShowStatus() {
