@@ -77,7 +77,6 @@ AutoRSequence() {
     
     ; Press R (after 2.5s delay from left click)
     Send("{r}")
-    ShowTooltip("Ascend: R pressed")
     
     ; Schedule the jump after 2s delay from R press (one-time execution)
     modules["ascend"].autoJumpTimer := SetTimer(() => AscendJumpAndFinish(), -ASCEND_AUTO_JUMP_DELAY)
