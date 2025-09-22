@@ -48,14 +48,14 @@ InitializeModules()
 Numpad0::ToggleModule("master")      ; Master ON/OFF toggle (disables/enables all)
 Numpad1::ToggleModule("tabber")      ; Auto tab presser (every 2 seconds)
 Numpad2::ToggleModule("bunny")       ; Movement + jumping + Auto V + Auto C (R to toggle jumping, V to toggle Auto V, F4 to toggle movement, F5 to toggle Auto C)
-Numpad3::ToggleModule("luna")        ; Triple skill combo (E to spam Z,V,C)
+Numpad3::ToggleModule("luna")        ; Triple skill combo (E to spam Z,V,C or toggle Ascend Auto-Repeat)
 Numpad4::ToggleModule("viessa")      ; Auto-click after skill  (4 key or Z key)
 Numpad5::ToggleModule("freyna")      ; Auto C/V presser (F3 to toggle, manual C/V pauses)
 Numpad6::ToggleModule("quest")       ; Quest abort sequence (T key: ESC -> Click -> Space -> F2 hold -> R hold)
 Numpad7::ToggleModule("repeat")      ; F2+R sequence (T key: for repeatable quests - optionally disables bunny jumping)
 Numpad8::ShowStatus()                ; Show all module status (including master and character classes)
 ; F6: Toggle ascend module, Left Click: Auto R+Jump sequence (ignores clicks during sequence)
-; F7: Toggle auto-repeat Ascend sequence every 6 seconds (500ms delay before R press)
+; E: Luna combo (when Luna enabled) OR Ascend Auto-Repeat toggle (when Ascend enabled)
 
 ; ========== ASCEND LEFT CLICK ACTIVATION ==========
 ~LButton:: {
@@ -488,6 +488,12 @@ F3:: {
         Send("{c}")
         return
     }
+    
+    ; Handle AscendAutoRepeat toggle
+    if (modules["ascend"].enabled) {
+        ToggleAscendAutoRepeat()
+        return
+    }
 }
 
 ; Bunny movement (Numpad2)
@@ -524,7 +530,6 @@ F5:: {
 
 ; Ascending set ammo reload
 F6::ToggleModule("ascend")           ; Toggle ascend module
-F7::ToggleAscendAutoRepeat()         ; Toggle auto-repeat Ascend sequence every 6 seconds
 
 ; Viessa auto-click (Numpad6)
 ~4::
