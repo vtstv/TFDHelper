@@ -34,7 +34,7 @@ global ASCEND_R_DELAY := 2000            ; Delay after manual R press before jum
 global ASCEND_AUTO_R_ENABLED := true     ; Enable auto R press on left click
 global ASCEND_AUTO_R_DELAY := 2500       ; Delay before pressing R after left click (2.5 seconds)
 global ASCEND_AUTO_JUMP_DELAY := 2000    ; Delay after auto R before jump (2 seconds)
-global ASCEND_AUTO_REPEAT_INTERVAL := 6000 ; Auto-repeat interval (6 seconds)
+global ASCEND_AUTO_REPEAT_INTERVAL := 7000 ; Auto-repeat interval (7 seconds)
 global ASCEND_AUTO_REPEAT_DELAY := 500   ; Delay before R press in auto-repeat mode (500ms)
 
 ; Tooltip timer (milliseconds)
@@ -156,9 +156,43 @@ ToggleAscendAutoRepeat() {
         modules["ascend"].autoRepeatTimer := 0
         ShowTooltip("Ascend Auto-Repeat: OFF")
     } else {
-        ; Start auto-repeat
+        ; Start auto-repeat - execute immediately first, then start repeating timer
+        
+        ; Execute the sequence immediately (bypassing timer checks)
+        if (IsGameActive()) {
+            ; Check if any sequence is currently running
+            isRTimerActive := false
+            isJumpTimerActive := false
+            isManualJumpActive := false
+            
+            try {
+                isRTimerActive := (modules["ascend"].autoRTimer != 0 && Type(modules["ascend"].autoRTimer) == "Object")
+            } catch {
+                modules["ascend"].autoRTimer := 0
+            }
+            
+            try {
+                isJumpTimerActive := (modules["ascend"].autoJumpTimer != 0 && Type(modules["ascend"].autoJumpTimer) == "Object")
+            } catch {
+                modules["ascend"].autoJumpTimer := 0
+            }
+            
+            try {
+                isManualJumpActive := (modules["ascend"].manualJumpTimer != 0 && Type(modules["ascend"].manualJumpTimer) == "Object")
+            } catch {
+                modules["ascend"].manualJumpTimer := 0
+            }
+            
+            ; If no sequences are running, execute immediately
+            if (!isRTimerActive && !isJumpTimerActive && !isManualJumpActive) {
+                Send("{LButton}")
+                SetTimer(() => AscendAutoRepeatR(), -ASCEND_AUTO_REPEAT_DELAY)
+            }
+        }
+        
+        ; Then start the repeating timer
         modules["ascend"].autoRepeatTimer := SetTimer(() => AscendAutoRepeatSequence(), ASCEND_AUTO_REPEAT_INTERVAL)
-        ShowTooltip("Ascend Auto-Repeat: ON (every 6 seconds)")
+        ShowTooltip("Ascend Auto-Repeat: ON (every 7 seconds)")
     }
 }
 
@@ -936,7 +970,7 @@ ShowStatus() {
         ascendStatus .= " + Auto-Repeat"
     }
     status .= "Ascend (F6): " . ascendStatus . "`n"
-    status .= "Ascend Auto-Repeat (F7): " . (modules["ascend"].autoRepeatTimer != 0 ? "ON" : "OFF")
+    status .= "Ascend Auto-Repeat (E): " . (modules["ascend"].autoRepeatTimer != 0 ? "ON" : "OFF")
     
     MsgBox(status, "TFD Helper Status", "T3")
 }
