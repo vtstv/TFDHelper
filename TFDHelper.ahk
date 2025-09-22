@@ -154,16 +154,25 @@ F3:: {
 
 ; Bunny jumping (Numpad3)
 ~r:: {
-    if (!modules["master"].enabled || !modules["bunny"].enabled)
+    if (!modules["master"].enabled)
         return
     
-    modules["bunny"].jumping := !modules["bunny"].jumping
-    if (modules["bunny"].jumping) {
-        SetTimer(DoubleJump, 100)
-        ShowTooltip("Bunny: Jumping ON")
-    } else {
-        SetTimer(DoubleJump, 0)
-        ShowTooltip("Bunny: Jumping OFF")
+    ; Handle Bunny jumping
+    if (modules["bunny"].enabled) {
+        modules["bunny"].jumping := !modules["bunny"].jumping
+        if (modules["bunny"].jumping) {
+            SetTimer(DoubleJump, 100)
+            ShowTooltip("Bunny: Jumping ON")
+        } else {
+            SetTimer(DoubleJump, 0)
+            ShowTooltip("Bunny: Jumping OFF")
+        }
+    }
+    
+    ; Handle Ascending set ammo reload
+    if (modules["ascend"].enabled && IsGameActive()) {
+        ; Delay then single jump
+        SetTimer(AscendJump, -2000)  ; -2000 means run once after 2 seconds
     }
 }
 
@@ -220,6 +229,9 @@ F5:: {
     }
 }
 
+; Ascending set ammo reload
+F6::ToggleModule("ascend")           ; Toggle ascend module (auto space after R press with 2s delay)
+
 ; Viessa auto-click (Numpad6)
 ~4::
 ~z::{
@@ -245,6 +257,7 @@ InitializeModules() {
     modules["tabber"] := {enabled: false, active: false}
     modules["viessa"] := {enabled: false, blocking: false}
     modules["repeat"] := {enabled: false}
+    modules["ascend"] := {enabled: false}
     modules["master"] := {enabled: true}
     
     ; Start tabber timer if enabled
@@ -399,6 +412,8 @@ SaveModuleStates() {
                 savedState["blocking"] := moduleData.blocking
             case "repeat":
                 savedState["enabled"] := moduleData.enabled
+            case "ascend":
+                savedState["enabled"] := moduleData.enabled
         }
         
         savedModuleStates[moduleName] := savedState
@@ -436,6 +451,8 @@ RestoreModuleStates() {
                 modules["viessa"].blocking := savedState["blocking"]
             case "repeat":
                 modules["repeat"].enabled := savedState["enabled"]
+            case "ascend":
+                modules["ascend"].enabled := savedState["enabled"]
         }
         
         ; Restart timers for active modules
@@ -534,6 +551,15 @@ BunnyAutoC() {
     Send("{c}")
 }
 
+AscendJump() {
+    if (!modules["master"].enabled || !IsGameActive())
+        return
+    
+    Send("{Space down}")
+    Sleep(100)
+    Send("{Space up}")
+}
+
 ShowTooltip(text) {
     global tooltipTimer
     x := A_ScreenWidth - 220
@@ -583,7 +609,8 @@ ShowStatus() {
     status .= "`n--- UTILITY MODULES ---`n"
     status .= "Tabber (Num1): " . (modules["tabber"].enabled ? "ON" : "OFF") . "`n"
     status .= "Quest (Num6): " . (modules["quest"].enabled ? "ON" : "OFF") . "`n"
-    status .= "Repeat (Num7): " . (modules["repeat"].enabled ? "ON" : "OFF")
+    status .= "Repeat (Num7): " . (modules["repeat"].enabled ? "ON" : "OFF") . "`n"
+    status .= "Ascend (F6): " . (modules["ascend"].enabled ? "ON" : "OFF")
     
     MsgBox(status, "TFD Helper Status", "T3")
 }
