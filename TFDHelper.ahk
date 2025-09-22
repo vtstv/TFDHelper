@@ -34,7 +34,7 @@ global ASCEND_R_DELAY := 2000            ; Delay after manual R press before jum
 global ASCEND_AUTO_R_ENABLED := true     ; Enable auto R press on left click
 global ASCEND_AUTO_R_DELAY := 2500       ; Delay before pressing R after left click (2.5 seconds)
 global ASCEND_AUTO_JUMP_DELAY := 2000    ; Delay after auto R before jump (2 seconds)
-global ASCEND_AUTO_REPEAT_INTERVAL := 7000 ; Auto-repeat interval (7 seconds)
+global ASCEND_AUTO_REPEAT_INTERVAL := 10000 ; Auto-repeat interval (10 seconds)
 global ASCEND_AUTO_REPEAT_DELAY := 500   ; Delay before R press in auto-repeat mode (500ms)
 
 ; Tooltip timer (milliseconds)
