@@ -68,6 +68,7 @@ Numpad8::ShowStatus()                ; Show all module status (including master 
     ; Ignore clicks if sequence is already running - check for valid timer objects
     isRTimerActive := false
     isJumpTimerActive := false
+    isManualJumpActive := false
     
     try {
         isRTimerActive := (modules["ascend"].autoRTimer != 0 && Type(modules["ascend"].autoRTimer) == "Object")
@@ -81,7 +82,13 @@ Numpad8::ShowStatus()                ; Show all module status (including master 
         modules["ascend"].autoJumpTimer := 0  ; Clear invalid reference
     }
     
-    if (isRTimerActive || isJumpTimerActive) {
+    try {
+        isManualJumpActive := (modules["ascend"].manualJumpTimer != 0 && Type(modules["ascend"].manualJumpTimer) == "Object")
+    } catch {
+        modules["ascend"].manualJumpTimer := 0  ; Clear invalid reference
+    }
+    
+    if (isRTimerActive || isJumpTimerActive || isManualJumpActive) {
         return  ; Sequence already in progress, ignore this click
     }
     
@@ -177,6 +184,7 @@ AscendAutoRepeatSequence() {
     ; Check if manual sequence is already running
     isRTimerActive := false
     isJumpTimerActive := false
+    isManualJumpActive := false
     
     try {
         isRTimerActive := (modules["ascend"].autoRTimer != 0 && Type(modules["ascend"].autoRTimer) == "Object")
@@ -190,8 +198,14 @@ AscendAutoRepeatSequence() {
         modules["ascend"].autoJumpTimer := 0
     }
     
-    if (isRTimerActive || isJumpTimerActive) {
-        ; Manual sequence is running, skip this auto-repeat cycle
+    try {
+        isManualJumpActive := (modules["ascend"].manualJumpTimer != 0 && Type(modules["ascend"].manualJumpTimer) == "Object")
+    } catch {
+        modules["ascend"].manualJumpTimer := 0
+    }
+    
+    if (isRTimerActive || isJumpTimerActive || isManualJumpActive) {
+        ; Manual or left-click sequence is running, skip this auto-repeat cycle
         return
     }
     
@@ -259,6 +273,15 @@ StopAllAscendTimers() {
         ; Timer reference is invalid, just clear it
     }
     modules["ascend"].autoRepeatTimer := 0
+    
+    try {
+        if (modules["ascend"].manualJumpTimer != 0 && Type(modules["ascend"].manualJumpTimer) == "Object") {
+            SetTimer(modules["ascend"].manualJumpTimer, 0)
+        }
+    } catch {
+        ; Timer reference is invalid, just clear it
+    }
+    modules["ascend"].manualJumpTimer := 0
     
     ; Stop any orphaned AscendJump timers (for manual R press)
     try {
@@ -410,8 +433,39 @@ F3:: {
     
     ; Handle Ascending set ammo reload (manual R press)
     if (modules["master"].enabled && modules["ascend"].enabled && IsGameActive()) {
-        ; Only trigger if ascend module is actually enabled and master is on
-        SetTimer(AscendJump, -ASCEND_R_DELAY)
+        ; Check if left-click sequence is already running
+        isRTimerActive := false
+        isJumpTimerActive := false
+        
+        try {
+            isRTimerActive := (modules["ascend"].autoRTimer != 0 && Type(modules["ascend"].autoRTimer) == "Object")
+        } catch {
+            modules["ascend"].autoRTimer := 0
+        }
+        
+        try {
+            isJumpTimerActive := (modules["ascend"].autoJumpTimer != 0 && Type(modules["ascend"].autoJumpTimer) == "Object")
+        } catch {
+            modules["ascend"].autoJumpTimer := 0
+        }
+        
+        if (isRTimerActive || isJumpTimerActive) {
+            ; Left-click sequence is running, ignore manual R press
+            return
+        }
+        
+        ; Check if manual sequence is already running
+        try {
+            if (modules["ascend"].manualJumpTimer != 0 && Type(modules["ascend"].manualJumpTimer) == "Object") {
+                ; Manual sequence already running, ignore this R press
+                return
+            }
+        } catch {
+            modules["ascend"].manualJumpTimer := 0
+        }
+        
+        ; Start manual R sequence and track the timer
+        modules["ascend"].manualJumpTimer := SetTimer(AscendJump, -ASCEND_R_DELAY)
     }
 }
 
@@ -497,7 +551,7 @@ InitializeModules() {
     modules["tabber"] := {enabled: false, active: false}
     modules["viessa"] := {enabled: false, blocking: false}
     modules["repeat"] := {enabled: false}
-    modules["ascend"] := {enabled: false, autoRTimer: 0, autoJumpTimer: 0, autoRepeatTimer: 0}
+    modules["ascend"] := {enabled: false, autoRTimer: 0, autoJumpTimer: 0, autoRepeatTimer: 0, manualJumpTimer: 0}
     modules["master"] := {enabled: true}
     
     ; Start tabber timer if enabled
@@ -663,6 +717,7 @@ SaveModuleStates() {
                 savedState["autoRTimer"] := 0          ; Don't save timer references
                 savedState["autoJumpTimer"] := 0       ; Don't save timer references
                 savedState["autoRepeatTimer"] := 0     ; Don't save timer references
+                savedState["manualJumpTimer"] := 0     ; Don't save timer references
         }
         
         savedModuleStates[moduleName] := savedState
@@ -705,6 +760,7 @@ RestoreModuleStates() {
                 modules["ascend"].autoRTimer := 0        ; Reset timers
                 modules["ascend"].autoJumpTimer := 0     ; Reset timers
                 modules["ascend"].autoRepeatTimer := 0   ; Reset timers
+                modules["ascend"].manualJumpTimer := 0   ; Reset timers
         }
         
         ; Restart timers for active modules
@@ -804,8 +860,14 @@ BunnyAutoC() {
 }
 
 AscendJump() {
-    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive())
+    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive()) {
+        ; Clear manual timer if conditions not met
+        modules["ascend"].manualJumpTimer := 0
         return
+    }
+    
+    ; Clear the manual timer since we're executing now
+    modules["ascend"].manualJumpTimer := 0
     
     Send("{Space down}")
     Sleep(100)
