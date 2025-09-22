@@ -34,6 +34,8 @@ global ASCEND_R_DELAY := 2000            ; Delay after manual R press before jum
 global ASCEND_AUTO_R_ENABLED := true     ; Enable auto R press on left click
 global ASCEND_AUTO_R_DELAY := 2500       ; Delay before pressing R after left click (2.5 seconds)
 global ASCEND_AUTO_JUMP_DELAY := 2000    ; Delay after auto R before jump (2 seconds)
+global ASCEND_AUTO_REPEAT_INTERVAL := 6000 ; Auto-repeat interval (6 seconds)
+global ASCEND_AUTO_REPEAT_DELAY := 500   ; Delay before R press in auto-repeat mode (500ms)
 
 ; Tooltip timer (milliseconds)
 global TOOLTIP_DURATION := 1500          ; How long tooltips stay visible
@@ -53,14 +55,33 @@ Numpad6::ToggleModule("quest")       ; Quest abort sequence (T key: ESC -> Click
 Numpad7::ToggleModule("repeat")      ; F2+R sequence (T key: for repeatable quests - optionally disables bunny jumping)
 Numpad8::ShowStatus()                ; Show all module status (including master and character classes)
 ; F6: Toggle ascend module, Left Click: Auto R+Jump sequence (ignores clicks during sequence)
+; F7: Toggle auto-repeat Ascend sequence every 6 seconds (500ms delay before R press)
 
 ; ========== ASCEND LEFT CLICK ACTIVATION ==========
 ~LButton:: {
+    ; Debug: Uncomment the line below to check what's preventing activation
+    ; ShowTooltip("Debug: R_EN=" . ASCEND_AUTO_R_ENABLED . " M=" . modules["master"].enabled . " A=" . modules["ascend"].enabled . " G=" . IsGameActive())
+    
     if (!ASCEND_AUTO_R_ENABLED || !modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive())
         return
     
-    ; Ignore clicks if sequence is already running
-    if (modules["ascend"].autoRTimer != 0 || modules["ascend"].autoJumpTimer != 0) {
+    ; Ignore clicks if sequence is already running - check for valid timer objects
+    isRTimerActive := false
+    isJumpTimerActive := false
+    
+    try {
+        isRTimerActive := (modules["ascend"].autoRTimer != 0 && Type(modules["ascend"].autoRTimer) == "Object")
+    } catch {
+        modules["ascend"].autoRTimer := 0  ; Clear invalid reference
+    }
+    
+    try {
+        isJumpTimerActive := (modules["ascend"].autoJumpTimer != 0 && Type(modules["ascend"].autoJumpTimer) == "Object")
+    } catch {
+        modules["ascend"].autoJumpTimer := 0  ; Clear invalid reference
+    }
+    
+    if (isRTimerActive || isJumpTimerActive) {
         return  ; Sequence already in progress, ignore this click
     }
     
@@ -69,8 +90,14 @@ Numpad8::ShowStatus()                ; Show all module status (including master 
 }
 
 AutoRSequence() {
-    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive())
+    ; Add debug logging
+    ; ShowTooltip("AutoRSequence: Starting")
+    
+    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive()) {
+        ; Reset timer if conditions not met
+        modules["ascend"].autoRTimer := 0
         return
+    }
     
     ; Clear the R timer since we're executing now
     modules["ascend"].autoRTimer := 0
@@ -83,8 +110,14 @@ AutoRSequence() {
 }
 
 AscendJumpAndFinish() {
-    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive())
+    ; Add debug logging
+    ; ShowTooltip("AscendJumpAndFinish: Starting")
+    
+    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive()) {
+        ; Reset timer if conditions not met
+        modules["ascend"].autoJumpTimer := 0
         return
+    }
     
     ; Clear the jump timer since we're executing now
     modules["ascend"].autoJumpTimer := 0
@@ -93,20 +126,146 @@ AscendJumpAndFinish() {
     Send("{Space down}")
     Sleep(100)
     Send("{Space up}")
+    
+}
+
+; ========== ASCEND AUTO-REPEAT FUNCTIONS ==========
+ToggleAscendAutoRepeat() {
+    if (!modules["master"].enabled || !modules["ascend"].enabled) {
+        ShowTooltip("Ascend Auto-Repeat: Module not enabled")
+        return
+    }
+    
+    ; Toggle auto-repeat timer
+    if (modules["ascend"].autoRepeatTimer != 0) {
+        ; Stop auto-repeat
+        try {
+            SetTimer(modules["ascend"].autoRepeatTimer, 0)
+            ; Additional safety: try stopping with the callback function directly
+            SetTimer(() => AscendAutoRepeatSequence(), 0)
+        } catch {
+            ; Timer reference invalid, just clear it
+        }
+        modules["ascend"].autoRepeatTimer := 0
+        ShowTooltip("Ascend Auto-Repeat: OFF")
+    } else {
+        ; Start auto-repeat
+        modules["ascend"].autoRepeatTimer := SetTimer(() => AscendAutoRepeatSequence(), ASCEND_AUTO_REPEAT_INTERVAL)
+        ShowTooltip("Ascend Auto-Repeat: ON (every 6 seconds)")
+    }
+}
+
+AscendAutoRepeatSequence() {
+    ; First check if auto-repeat is still enabled
+    if (modules["ascend"].autoRepeatTimer == 0) {
+        return  ; Auto-repeat has been disabled, stop execution
+    }
+    
+    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive()) {
+        ; Stop auto-repeat if conditions not met
+        try {
+            if (modules["ascend"].autoRepeatTimer != 0 && Type(modules["ascend"].autoRepeatTimer) == "Object") {
+                SetTimer(modules["ascend"].autoRepeatTimer, 0)
+            }
+        } catch {
+            ; Timer reference invalid
+        }
+        modules["ascend"].autoRepeatTimer := 0
+        return
+    }
+    
+    ; Check if manual sequence is already running
+    isRTimerActive := false
+    isJumpTimerActive := false
+    
+    try {
+        isRTimerActive := (modules["ascend"].autoRTimer != 0 && Type(modules["ascend"].autoRTimer) == "Object")
+    } catch {
+        modules["ascend"].autoRTimer := 0
+    }
+    
+    try {
+        isJumpTimerActive := (modules["ascend"].autoJumpTimer != 0 && Type(modules["ascend"].autoJumpTimer) == "Object")
+    } catch {
+        modules["ascend"].autoJumpTimer := 0
+    }
+    
+    if (isRTimerActive || isJumpTimerActive) {
+        ; Manual sequence is running, skip this auto-repeat cycle
+        return
+    }
+    
+    ; Execute auto-repeat sequence: Start with left click, then R after 500ms delay
+    Send("{LButton}")
+    SetTimer(() => AscendAutoRepeatR(), -ASCEND_AUTO_REPEAT_DELAY)
+}
+
+AscendAutoRepeatR() {
+    ; Check if auto-repeat is still enabled
+    if (modules["ascend"].autoRepeatTimer == 0) {
+        return  ; Auto-repeat has been disabled, stop execution
+    }
+    
+    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive())
+        return
+    
+    ; Press R
+    Send("{r}")
+    
+    ; Schedule the jump after 2s delay from R press
+    SetTimer(() => AscendAutoRepeatJump(), -ASCEND_AUTO_JUMP_DELAY)
+}
+
+AscendAutoRepeatJump() {
+    ; Check if auto-repeat is still enabled
+    if (modules["ascend"].autoRepeatTimer == 0) {
+        return  ; Auto-repeat has been disabled, stop execution
+    }
+    
+    if (!modules["master"].enabled || !modules["ascend"].enabled || !IsGameActive())
+        return
+    
+    ; Execute the jump
+    Send("{Space down}")
+    Sleep(100)
+    Send("{Space up}")
 }
 
 StopAllAscendTimers() {
-    ; Stop all ascend-related timers
-    if (modules["ascend"].autoRTimer) {
-        SetTimer(modules["ascend"].autoRTimer, 0)
-        modules["ascend"].autoRTimer := 0
+    ; Stop all ascend-related timers by setting their intervals to 0
+    try {
+        if (modules["ascend"].autoRTimer != 0 && Type(modules["ascend"].autoRTimer) == "Object") {
+            SetTimer(modules["ascend"].autoRTimer, 0)
+        }
+    } catch {
+        ; Timer reference is invalid, just clear it
     }
-    if (modules["ascend"].autoJumpTimer) {
-        SetTimer(modules["ascend"].autoJumpTimer, 0)
-        modules["ascend"].autoJumpTimer := 0
+    modules["ascend"].autoRTimer := 0
+    
+    try {
+        if (modules["ascend"].autoJumpTimer != 0 && Type(modules["ascend"].autoJumpTimer) == "Object") {
+            SetTimer(modules["ascend"].autoJumpTimer, 0)
+        }
+    } catch {
+        ; Timer reference is invalid, just clear it
     }
+    modules["ascend"].autoJumpTimer := 0
+    
+    try {
+        if (modules["ascend"].autoRepeatTimer != 0 && Type(modules["ascend"].autoRepeatTimer) == "Object") {
+            SetTimer(modules["ascend"].autoRepeatTimer, 0)
+        }
+    } catch {
+        ; Timer reference is invalid, just clear it
+    }
+    modules["ascend"].autoRepeatTimer := 0
+    
     ; Stop any orphaned AscendJump timers (for manual R press)
-    SetTimer(AscendJump, 0)
+    try {
+        SetTimer(AscendJump, 0)
+    } catch {
+        ; Function doesn't exist or other error, ignore
+    }
 }
 
 
@@ -311,6 +470,7 @@ F5:: {
 
 ; Ascending set ammo reload
 F6::ToggleModule("ascend")           ; Toggle ascend module
+F7::ToggleAscendAutoRepeat()         ; Toggle auto-repeat Ascend sequence every 6 seconds
 
 ; Viessa auto-click (Numpad6)
 ~4::
@@ -337,7 +497,7 @@ InitializeModules() {
     modules["tabber"] := {enabled: false, active: false}
     modules["viessa"] := {enabled: false, blocking: false}
     modules["repeat"] := {enabled: false}
-    modules["ascend"] := {enabled: false, autoRTimer: 0, autoJumpTimer: 0}
+    modules["ascend"] := {enabled: false, autoRTimer: 0, autoJumpTimer: 0, autoRepeatTimer: 0}
     modules["master"] := {enabled: true}
     
     ; Start tabber timer if enabled
@@ -502,6 +662,7 @@ SaveModuleStates() {
                 savedState["enabled"] := moduleData.enabled
                 savedState["autoRTimer"] := 0          ; Don't save timer references
                 savedState["autoJumpTimer"] := 0       ; Don't save timer references
+                savedState["autoRepeatTimer"] := 0     ; Don't save timer references
         }
         
         savedModuleStates[moduleName] := savedState
@@ -543,6 +704,7 @@ RestoreModuleStates() {
                 modules["ascend"].enabled := savedState["enabled"]
                 modules["ascend"].autoRTimer := 0        ; Reset timers
                 modules["ascend"].autoJumpTimer := 0     ; Reset timers
+                modules["ascend"].autoRepeatTimer := 0   ; Reset timers
         }
         
         ; Restart timers for active modules
@@ -700,7 +862,14 @@ ShowStatus() {
     status .= "Tabber (Num1): " . (modules["tabber"].enabled ? "ON" : "OFF") . "`n"
     status .= "Quest (Num6): " . (modules["quest"].enabled ? "ON" : "OFF") . "`n"
     status .= "Repeat (Num7): " . (modules["repeat"].enabled ? "ON" : "OFF") . "`n"
-    status .= "Ascend (F6): " . (modules["ascend"].enabled ? "ON" : "OFF")
+    
+    ; Ascend module with auto-repeat status
+    ascendStatus := modules["ascend"].enabled ? "ON" : "OFF"
+    if (modules["ascend"].enabled && modules["ascend"].autoRepeatTimer != 0) {
+        ascendStatus .= " + Auto-Repeat"
+    }
+    status .= "Ascend (F6): " . ascendStatus . "`n"
+    status .= "Ascend Auto-Repeat (F7): " . (modules["ascend"].autoRepeatTimer != 0 ? "ON" : "OFF")
     
     MsgBox(status, "TFD Helper Status", "T3")
 }
