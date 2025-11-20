@@ -9,6 +9,7 @@ TFDHelper is a modular automation tool designed to enhance your gameplay experie
 - 🎮 **Character Class Modules** - Mutually exclusive automation for different characters
 - ⚡ **Master Control** - Global on/off switch with state saving/restoration
 - 🔧 **Utility Modules** - Independent helper functions
+- 🏔️ **Ascend Module** - Automated and manual Ascend sequences with auto-repeat functionality
 - 💾 **State Management** - Automatically saves and restores module states
 - 🎯 **Game Detection** - Only functions when The First Descendant is active
 
@@ -30,10 +31,12 @@ TFDHelper is a modular automation tool designed to enhance your gameplay experie
 ### Character Classes (Mutually Exclusive)
 | Key | Character | Description | Controls |
 |-----|-----------|-------------|----------|
-| `Numpad2` | **Bunny** | Movement + Auto V + Jumping | `E` (movement), `R` (jumping), `V` (auto V) |
+| `Numpad2` | **Bunny** | Movement + Auto V + Jumping | `F4` (movement), `R` (jumping), `V` (auto V), `F5` (auto C) |
 | `Numpad3` | **Luna** | Triple skill combo | `E` (combo: Z,V,C x2) |
 | `Numpad4` | **Viessa** | Auto-click after skill | `4` or `Z` (auto-click) |
-| `Numpad5` | **Freyna** | Auto C/V presser | `F3` (toggle), `C`/`V` (pause) |
+| `Numpad5` | **Freyna** | Auto C/V presser | `C`/`V` (pause/resume) |
+| `Numpad9` | **Hailey** | Auto Q presser | Automatic (2s intervals) |
+| `F6` | **Ascend** | Auto/manual Ascend sequences | `LClick` (auto), `R` (manual), `E` (auto-repeat) |
 
 ### Utility Modules
 | Key | Function | Description | Controls |
@@ -50,15 +53,17 @@ TFDHelper is a modular automation tool designed to enhance your gameplay experie
 - **Movement System**: Cycles through W,A,S,D keys with V presses
 - **Double Jump**: Automated space bar double-tap
 - **Auto V**: 3-second cooldown V ability
+- **Auto C**: 60-second cooldown C ability
 - **Controls**:
-  - `E` - Toggle movement on/off
+  - `F4` - Toggle movement on/off
   - `R` - Toggle jumping on/off  
   - `V` - Toggle Auto V on/off
+  - `F5` - Toggle Auto C on/off
 
 #### Luna (Numpad3)
 - **Skill Combo**: Automatically presses Z, V, C twice each with 50ms delays
 - **Controls**:
-  - `E` - Trigger combo (only works when Bunny is disabled)
+  - `E` - Trigger combo
 
 #### Viessa (Numpad4)
 - **Auto-Click**: Clicks mouse after skill activation with 400ms delay
@@ -67,10 +72,27 @@ TFDHelper is a modular automation tool designed to enhance your gameplay experie
 
 #### Freyna (Numpad5)
 - **Auto C/V**: Automated C (11s) and V (8s) ability rotation
-- **Smart Pause**: Manual C or V presses pause automation
+- **Smart Pause**: Manual C or V presses pause/resume automation
 - **Controls**:
   - `F3` - Toggle auto C/V on/off
   - `C` or `V` - Pause/resume automation
+
+#### Hailey (Numpad9)
+- **Auto Q**: Automatically presses Q every 2 seconds when enabled
+- **Smart Pause**: Manual Q press pauses/resumes automation
+- **Controls**:
+  - `Q` - Pause/resume automation
+
+#### Ascend (F6)
+- **Auto Left-Click Sequence**: Automatically performs R press and jump after left-click with configurable delays
+- **Manual R Sequence**: Press R to manually trigger Ascend jump sequence
+- **Auto-Repeat Mode**: Automatically repeats the full Ascend sequence every 10 seconds
+- **Mutual Exclusion**: Prevents conflicts between auto and manual sequences
+- **Controls**:
+  - `F6` - Toggle Ascend module on/off
+  - `Left Click` - Trigger auto R+Jump sequence (2.5s delay to R, 2s delay to jump)
+  - `R` - Manual Ascend (2s delay to jump)
+  - `E` - Toggle auto-repeat mode (immediate first execution, then every 10s)
 
 ### 🔧 Utility Modules
 
@@ -118,6 +140,13 @@ The script automatically detects when The First Descendant is running (`M1-Win64
 6. **Emergency**: Press `Numpad0` to disable everything instantly
 7. **Resume**: Press `Numpad0` again to restore exact previous state
 
+### Ascend Usage Examples
+
+1. **Auto Ascend**: Press `F6` to enable Ascend, then left-click to automatically perform R+Jump sequence
+2. **Manual Ascend**: Press `F6` to enable Ascend, then press `R` for manual Ascend jump
+3. **Auto-Repeat**: Press `F6` to enable Ascend, then press `E` to start auto-repeating Ascend sequences every 10 seconds
+4. **Stop Auto-Repeat**: Press `E` again while Ascend is enabled to stop the auto-repeat mode
+
 ## Requirements
 
 - AutoHotkey v2.0 or higher
@@ -128,6 +157,7 @@ The script automatically detects when The First Descendant is running (`M1-Win64
 
 - Script only functions when The First Descendant is the active window
 - All timers and states are automatically managed
+- Ascend module includes mutual exclusion between auto and manual sequences
 - Safe to use - includes proper cleanup and exit handling
 - Modular design allows easy customization
 
