@@ -14,7 +14,6 @@ if (FileExist(A_ScriptDir . "\src\tfdhelper.ico"))
 #Include src\utils.ahk
 #Include src\modules.ahk
 
-
 InitializeModules()
 
 LoadConfig()

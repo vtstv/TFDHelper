@@ -52,6 +52,9 @@ if ($iconArg) {
     & $ahkCompiler /in "$sourceFile" /out "$outputFile"
 }
 
+# Wait for compilation to complete
+Start-Sleep -Seconds 2
+
 if (Test-Path $outputFile) {
     Write-Host ""
     Write-Host "SUCCESS! Compiled to:" -ForegroundColor Green

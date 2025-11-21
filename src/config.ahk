@@ -12,7 +12,7 @@ global savedModuleStates := Map()
 global tooltipTimer := 0
 
 ; Configuration variables (will be loaded from INI)
-global GAME_EXE := ""
+global GAME_EXE := "M1-Win64-Shipping.exe"
 global DISABLE_BUNNY_JUMP_ON_REPEAT := true
 global ASCEND_AUTO_R_ENABLED := true
 global FREYNA_C_COOLDOWN := 11000
