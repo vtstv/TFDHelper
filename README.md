@@ -42,11 +42,6 @@ This tool is for personal use and convenience. Please ensure compliance with gam
 
 Edit `TFDHelper.ini` to customize timers and settings. All values in milliseconds.
 
-### Key Settings
-- `GameExe` - Game process name
-- `HaileyQInterval` - Hailey Q press interval (default: 1000ms)
-- `FreynaCCooldown` / `FreynaVCooldown` - Freyna ability timers
-- `BunnyAutoVCooldown` / `BunnyAutoCCooldown` - Bunny timers
 - See `TFDHelper.ini.example` for all options
 
 
