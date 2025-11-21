@@ -1,0 +1,18 @@
+# AutoHotkey compiled executables
+*.exe
+
+# Configuration files (user-specific)
+TFDHelper.ini
+
+# Backup files
+*_backup.ahk
+*_old.ahk
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace

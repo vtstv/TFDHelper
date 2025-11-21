@@ -6,11 +6,18 @@
 SendMode("Input")
 CoordMode("ToolTip", "Screen")
 
+; Set icon
+if (FileExist(A_ScriptDir . "\src\tfdhelper.ico"))
+    TraySetIcon(A_ScriptDir . "\src\tfdhelper.ico")
+
 #Include src\config.ahk
 #Include src\utils.ahk
 #Include src\modules.ahk
 
+
 InitializeModules()
+
+LoadConfig()
 
 #Include src\modules\freyna.ahk
 #Include src\modules\bunny.ahk

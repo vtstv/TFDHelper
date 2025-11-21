@@ -1,0 +1,41 @@
+; TFD Helper Configuration File
+; Edit this file to customize settings
+; All timer values are in milliseconds
+
+[General]
+; Game executable process name
+GameExe=M1-Win64-Shipping.exe
+
+[Features]
+; Disable bunny jumping when repeat sequence is active (1=enabled, 0=disabled)
+DisableBunnyJumpOnRepeat=1
+; Enable auto R press on left click for Ascend module (1=enabled, 0=disabled)
+AscendAutoREnabled=1
+
+[Timers]
+; Freyna timers
+FreynaCCooldown=11000
+FreynaVCooldown=8000
+
+; Bunny timers
+BunnyMovementInterval=50
+BunnyMovementVInterval=2000
+BunnyAutoVCooldown=3000
+BunnyAutoCCooldown=60000
+BunnyJumpInterval=100
+
+; Tabber timer
+TabberInterval=2000
+
+; Hailey timer
+HaileyQInterval=1000
+
+; Ascend timers
+AscendRDelay=2000
+AscendAutoRDelay=2500
+AscendAutoJumpDelay=2000
+AscendAutoRepeatInterval=10000
+AscendAutoRepeatDelay=500
+
+; Tooltip display duration
+TooltipDuration=1500
